@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>玉崩し</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0e1a;
+    --panel: #10182a;
+    --line: #22304a;
+    --cyan: #4cf3ff;
+    --magenta: #ff3ea5;
+    --amber: #ffd23f;
+    --lime: #7cff6b;
+    --violet: #b18cff;
+    --coral: #ff7a59;
+    --ink: #eaf6ff;
+    --dim: #6d84a8;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #16223d 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'DotGothic16', monospace;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh;
+  }
+  .cabinet{
+    width:min(680px, 96vw);
+    padding:18px 18px 22px;
+    background:linear-gradient(180deg, #141d33, #0d1424);
+    border:2px solid var(--line);
+    border-radius:18px;
+    box-shadow: 0 0 0 1px #000 inset, 0 30px 60px -20px rgba(0,0,0,.8);
+  }
+  .marquee{
+    text-align:center;
+    padding:10px 6px 16px;
+  }
+  .marquee h1{
+    margin:0;
+    font-size:clamp(22px, 5vw, 34px);
+    letter-spacing:.08em;
+    color:var(--ink);
+    text-shadow:
+      0 0 6px var(--cyan),
+      0 0 18px rgba(76,243,255,.5);
+  }
+  .marquee p{
+    margin:6px 0 0;
+    font-size:11px;
+    color:var(--dim);
+    letter-spacing:.12em;
+  }
+  .hud{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:0 4px 10px;
+    font-family:'Press Start 2P', monospace;
+    font-size:11px;
+    color:var(--ink);
+  }
+  .hud span{color:var(--dim); margin-right:6px;}
+  .hud .score-val{color:var(--amber);}
+  .hud .lives-val{color:var(--coral);}
+  .music-btn{
+    font-family:'Press Start 2P', monospace;
+    font-size:9px;
+    color:var(--cyan);
+    background:rgba(76,243,255,.08);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:6px 10px;
+    cursor:pointer;
+  }
+  .music-btn.muted{ color:var(--dim); background:rgba(255,255,255,.03); }
+  .stage{
+    position:relative;
+    border-radius:10px;
+    overflow:hidden;
+    border:2px solid var(--line);
+    background:#060a13;
+    box-shadow: 0 0 40px rgba(76,243,255,.06) inset;
+  }
+  #game{
+    display:block;
+    width:100%;
+    height:auto;
+    touch-action:none;
+    cursor:none;
+  }
+  .overlay{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px;
+    background:rgba(6,10,19,.82);
+    backdrop-filter: blur(1px);
+    text-align:center;
+    padding:20px;
+  }
+  .hidden{display:none;}
+  .overlay .eyebrow{
+    font-family:'Press Start 2P', monospace;
+    font-size:11px;
+    letter-spacing:.15em;
+    color:var(--violet);
+  }
+  .overlay h2{
+    margin:0;
+    font-family:'DotGothic16', monospace;
+    font-size:clamp(18px,4.4vw,26px);
+    color:var(--ink);
+  }
+  .btn{
+    margin-top:6px;
+    height:38px;
+    padding:0 18px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Press Start 2P', monospace;
+    font-size:11px;
+    color:#06121c;
+    background:var(--cyan);
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    box-shadow:0 0 20px rgba(76,243,255,.5);
+  }
+  .btn:active{transform:translateY(1px);}
+
+  .btn-secondary{
+    margin-top:4px;
+    height:19px;
+    padding:0 16px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Press Start 2P', monospace;
+    font-size:9px;
+    color:#06121c;
+    background:#ffffff;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    box-shadow:0 0 12px rgba(255,255,255,.4);
+  }
+  .btn-secondary:active{transform:translateY(1px);}
+
+  /* --- win toast: keep the revealed number & confetti visible underneath --- */
+  #winOverlay{
+    inset:auto; top:14px; left:50%; transform:translateX(-50%);
+    width:auto; max-width:80%;
+    background:rgba(8,12,22,.9);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 22px;
+    box-shadow:0 0 24px rgba(255,210,63,.25);
+    gap:8px;
+    backdrop-filter:none;
+    animation: pop .35s ease-out;
+  }
+  @keyframes pop{
+    0%{ transform:translateX(-50%) scale(.85); opacity:0; }
+    100%{ transform:translateX(-50%) scale(1); opacity:1; }
+  }
+
+  #passwordOverlay{ position:absolute; }
+  #codeOverlay{ position:absolute; }
+  #startOverlay{ position:absolute; }
+  .code-btn{
+    position:absolute; top:12px; right:12px;
+    font-family:'DotGothic16', monospace;
+    font-size:11px;
+    color:var(--dim);
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:7px 10px;
+    cursor:pointer;
+    letter-spacing:.03em;
+  }
+  .code-btn:hover{ color:var(--ink); border-color:var(--cyan); }
+  .premium-note{
+    font-size:11px;
+    color:var(--amber);
+    max-width:260px;
+    line-height:1.6;
+    margin:-4px 0 2px;
+  }
+  .pw-input{
+    font-family:'Press Start 2P', monospace;
+    font-size:14px;
+    letter-spacing:.3em;
+    text-align:center;
+    width:200px;
+    padding:12px 14px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#0a1120;
+    color:var(--ink);
+    outline:none;
+  }
+  .pw-input:focus{ border-color:var(--cyan); box-shadow:0 0 0 3px rgba(76,243,255,.2); }
+  .pw-error{
+    font-size:11.5px;
+    color:var(--coral);
+  }
+  .instructions{
+    margin-top:14px;
+    text-align:center;
+    font-size:11.5px;
+    color:var(--dim);
+    line-height:1.7;
+  }
+  .instructions b{ color:var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="cabinet">
+  <div class="marquee">
+    <h1>玉 崩 し</h1>
+    <p>BLOCK BREAKER — REACH THE NUMBER</p>
+  </div>
+
+  <div class="hud">
+    <div><span>SCORE</span><span class="score-val" id="scoreVal">0</span></div>
+    <button class="music-btn" id="musicToggle" aria-label="音楽のオン・オフ">♪ ON</button>
+    <div><span>LIVES</span><span class="lives-val" id="livesVal">●●●</span></div>
+  </div>
+
+  <div class="stage">
+    <canvas id="game" width="640" height="480"></canvas>
+
+    <div class="overlay" id="startOverlay">
+      <button class="code-btn" id="codeBtn">出席コードの変更はこちら</button>
+      <div class="eyebrow">READY</div>
+      <h2>ブロックの裏に数字が隠れている。<br>暗いブロックは左側から順に崩そう</h2>
+      <button class="btn" id="startBtn">スタート</button>
+    </div>
+
+    <div class="overlay hidden" id="codeOverlay">
+      <div class="eyebrow">出席コードの変更</div>
+      <h2>ブロックの裏に隠す数字を<br>入力してください</h2>
+      <input type="text" id="codeInput" class="pw-input" placeholder="数字を入力" autocomplete="off" inputmode="numeric" maxlength="10" />
+      <button class="btn" id="codeSaveBtn">変更する</button>
+      <button class="btn-secondary" id="codeBackBtn">もどる</button>
+      <div class="pw-error hidden" id="codeError">数字を入力してください</div>
+    </div>
+
+    <div class="overlay hidden" id="passwordOverlay">
+      <div class="eyebrow">LOCKED</div>
+      <p class="premium-note">有料プランに入るとゲームが簡単になります</p>
+      <input type="password" id="pwInput" class="pw-input" placeholder="PASSWORD" autocomplete="off" inputmode="numeric" />
+      <button class="btn" id="pwSubmitBtn">決定</button>
+      <button class="btn-secondary" id="pwFreeBtn">無料でプレイする</button>
+      <div class="pw-error hidden" id="pwError">パスワードが違います</div>
+    </div>
+
+    <div class="overlay hidden" id="loseOverlay">
+      <div class="eyebrow">GAME OVER</div>
+      <h2>もう一度挑戦してみよう</h2>
+      <button class="btn" id="retryBtn">リトライ</button>
+    </div>
+
+    <div class="overlay hidden" id="winOverlay">
+      <div class="eyebrow">CLEAR !! すべて現れた</div>
+      <button class="btn" id="playAgainBtn">もう一度あそぶ</button>
+    </div>
+  </div>
+
+  <div class="instructions">
+    <b>操作</b>：マウス移動 / 左右矢印キー / スマホは指でドラッグ &nbsp;|&nbsp; <b>発射</b>：クリック or スペースキー &nbsp;|&nbsp; ブロックの裏に隠れた数字を崩して見つけよう
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const scoreEl = document.getElementById('scoreVal');
+  const livesEl = document.getElementById('livesVal');
+  const startOverlay = document.getElementById('startOverlay');
+  const passwordOverlay = document.getElementById('passwordOverlay');
+  const loseOverlay = document.getElementById('loseOverlay');
+  const winOverlay = document.getElementById('winOverlay');
+  const pwInput = document.getElementById('pwInput');
+  const pwError = document.getElementById('pwError');
+  const codeOverlay = document.getElementById('codeOverlay');
+  const codeInput = document.getElementById('codeInput');
+  const codeError = document.getElementById('codeError');
+
+  const PASSWORD = '1234';
+  // 状態1: 通常プレイ（残機1・行数は基準どおり） / 状態2: パスワード正解時（残機3・行数は状態1より2行少ない）
+  const STATE1_ROWS = 9;
+  const STATE_CONFIG = {
+    1: { lives: 1, rows: STATE1_ROWS },
+    2: { lives: 3, rows: STATE1_ROWS - 2 }
+  };
+  let currentStateNum = 1;
+
+  const PALETTE = ['#ff3ea5', '#ffd23f', '#7cff6b', '#4cf3ff', '#b18cff', '#ff7a59'];
+
+  // ---------- audio (tiny beeps, no external assets) ----------
+  let actx = null;
+  function beep(freq, dur, type='square', vol=0.05){
+    try{
+      if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g); g.connect(actx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+      o.stop(actx.currentTime + dur);
+    }catch(e){}
+  }
+
+  // ---------- background music (procedural chiptune, no external files) ----------
+  const MELODY_FREQ = [
+    329.63, 392.00, 493.88, 659.25,
+    587.33, 493.88, 392.00, 587.33,
+    523.25, 659.25, 783.99, 659.25,
+    440.00, 523.25, 659.25, 493.88
+  ];
+  const BASS_FREQ = 164.81;
+  const STEP_DUR = 0.155; // 少し速めにしてハイテンションに
+  const KICK_STEPS  = [0, 4, 8, 12];
+  const SNARE_STEPS = [2, 6, 10, 14];
+
+  let musicStarted = false;
+  let musicMuted = false;
+  let musicTimer = null;
+  const musicToggle = document.getElementById('musicToggle');
+
+  let noiseBuffer = null;
+  function getNoiseBuffer(){
+    if(noiseBuffer) return noiseBuffer;
+    const len = Math.floor(actx.sampleRate * 0.3);
+    const buf = actx.createBuffer(1, len, actx.sampleRate);
+    const data = buf.getChannelData(0);
+    for(let i=0;i<len;i++) data[i] = Math.random()*2-1;
+    noiseBuffer = buf;
+    return buf;
+  }
+
+  function scheduleTone(freq, dur, startTime, type, peakVol){
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, startTime);
+    g.gain.linearRampToValueAtTime(peakVol, startTime + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+    o.connect(g);
+    g.connect(actx.destination);
+    o.start(startTime);
+    o.stop(startTime + dur + 0.02);
+  }
+
+  function scheduleKick(startTime){
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(160, startTime);
+    o.frequency.exponentialRampToValueAtTime(48, startTime + 0.13);
+    g.gain.setValueAtTime(0.55, startTime);
+    g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.17);
+    o.connect(g); g.connect(actx.destination);
+    o.start(startTime); o.stop(startTime + 0.2);
+  }
+
+  function scheduleSnare(startTime){
+    const src = actx.createBufferSource();
+    src.buffer = getNoiseBuffer();
+    const filt = actx.createBiquadFilter();
+    filt.type = 'highpass'; filt.frequency.value = 1400;
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.32, startTime);
+    g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.11);
+    src.connect(filt); filt.connect(g); g.connect(actx.destination);
+    src.start(startTime); src.stop(startTime + 0.12);
+  }
+
+  function scheduleHihat(startTime){
+    const src = actx.createBufferSource();
+    src.buffer = getNoiseBuffer();
+    const filt = actx.createBiquadFilter();
+    filt.type = 'highpass'; filt.frequency.value = 7500;
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.14, startTime);
+    g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.045);
+    src.connect(filt); filt.connect(g); g.connect(actx.destination);
+    src.start(startTime); src.stop(startTime + 0.05);
+  }
+
+  function playMelodyLoop(){
+    if(musicMuted || !musicStarted) return;
+    try{
+      if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      let t = actx.currentTime + 0.05;
+      MELODY_FREQ.forEach((freq, i) => {
+        scheduleTone(freq, STEP_DUR * 0.85, t, 'square', 0.1);
+        if(i % 4 === 0) scheduleTone(BASS_FREQ, STEP_DUR * 4 * 0.85, t, 'sawtooth', 0.09);
+        if(KICK_STEPS.includes(i)) scheduleKick(t);
+        if(SNARE_STEPS.includes(i)) scheduleSnare(t);
+        scheduleHihat(t); // 16分刻みで鳴らしてせわしないテンションを作る
+        t += STEP_DUR;
+      });
+      const totalMs = MELODY_FREQ.length * STEP_DUR * 1000;
+      musicTimer = setTimeout(playMelodyLoop, totalMs);
+    }catch(e){}
+  }
+
+  function startMusic(){
+    if(musicStarted) return;
+    musicStarted = true;
+    if(!musicMuted) playMelodyLoop();
+  }
+
+  function updateMusicButton(){
+    musicToggle.textContent = musicMuted ? '♪ OFF' : '♪ ON';
+    musicToggle.classList.toggle('muted', musicMuted);
+  }
+
+  musicToggle.addEventListener('click', () => {
+    musicMuted = !musicMuted;
+    updateMusicButton();
+    if(musicMuted){
+      if(musicTimer) clearTimeout(musicTimer);
+    } else if(musicStarted){
+      playMelodyLoop();
+    }
+  });
+  updateMusicButton();
+
+  // ---------- game state ----------
+  const PADDLE_W = 92, PADDLE_H = 12;
+  const BALL_R = 7;
+  let ROWS = STATE_CONFIG[1].rows;
+  const COLS = 10;
+  const BRICK_PAD = 0, BRICK_TOP = 40, BRICK_H = 20;
+  const BRICK_W = (W - BRICK_PAD * (COLS + 1)) / COLS;
+  let HIDDEN_TEXT = '347403';
+  // 数字は左の桁から順にしか見えないようにする: 右側のブロックは、左側をすべて崩すまでロックされる
+  let lastLayout = null;
+  function displayedText(){ return HIDDEN_TEXT; }
+  function brickGate(b){
+    // 最初から崩せるのは左端の2列
+    if(Math.round(b.x / (BRICK_W + BRICK_PAD)) < 2) return 0;
+    if(!lastLayout) return 0;
+    const g = Math.floor((b.x + b.w - 0.01 - lastLayout.left) / lastLayout.digitW);
+    return Math.max(0, Math.min(lastLayout.n - 1, g));
+  }
+  function minAliveGate(){
+    let m = Infinity;
+    for(const b of bricks){ if(b.alive){ const g = brickGate(b); if(g < m) m = g; } }
+    return m;
+  }
+  function isLocked(b, minG){ return brickGate(b) > minG; }
+
+  // ---------- 出席コードの保存・共有 ----------
+  // 公開ページ: 共有db(全員に同じ値が見える) / 単体HTMLで開いた場合: このブラウザのlocalStorage
+  const LS_KEY = 'tamakuzushi_attendance_code';
+
+  // ★ 全員で同じ出席コードを共有したい場合は、ここに共有データベースのURLを入れてください。
+  //   例（Firebase Realtime Database）: 'https://あなたのプロジェクト-default-rtdb.firebaseio.com/attendanceCode.json'
+  //   空のままだと、変更はこのブラウザ（この端末）の中にだけ保存されます。
+  const SHARED_STORAGE_URL = '';
+
+  let sharedDoc = null;
+  function applyCode(v){
+    if(v !== null && v !== undefined) v = String(v);
+    if(typeof v === 'string' && /^[0-9]+$/.test(v)) HIDDEN_TEXT = v;
+  }
+  function loadLocalCode(){ try{ applyCode(localStorage.getItem(LS_KEY)); }catch(e){} }
+  async function loadRemoteCode(){
+    try{
+      const res = await fetch(SHARED_STORAGE_URL, {cache:'no-store'});
+      if(!res.ok) throw new Error('http ' + res.status);
+      applyCode(await res.json());
+      return true;
+    }catch(e){ return false; }
+  }
+  (async () => {
+    try{
+      if(window.claude && window.claude.use){
+        const db = await window.claude.use('db');
+        if(db){
+          sharedDoc = db.doc('config/attendance');
+          sharedDoc.onSnapshot(snap => {
+            if(snap.exists){ const d = snap.data(); applyCode(d && d.code); }
+          }, () => {});
+          const user = await window.claude.use('user');
+          if(user){
+            const ok = await user.can('data.write');
+            if(ok === false) document.getElementById('codeBtn').style.display = 'none';
+          }
+          return;
+        }
+      }
+    }catch(e){}
+    loadLocalCode();                       // まずこの端末の保存値
+    if(SHARED_STORAGE_URL) await loadRemoteCode(); // 共有URLがあればそちらを優先
+  })();
+  async function persistCode(val){
+    if(sharedDoc){
+      try{ await sharedDoc.set({code: val}); return 'shared'; }
+      catch(e){ return 'denied'; }
+    }
+    if(SHARED_STORAGE_URL){
+      try{
+        const res = await fetch(SHARED_STORAGE_URL, {
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(val)
+        });
+        if(!res.ok) throw new Error('http ' + res.status);
+        try{ localStorage.setItem(LS_KEY, val); }catch(e){}
+        return 'shared';
+      }catch(e){ return 'denied'; }
+    }
+    try{ localStorage.setItem(LS_KEY, val); }catch(e){}
+    return 'local';
+  }
+
+  let state = 'ready'; // ready | playing | win | lose
+  let score = 0, lives = STATE_CONFIG[1].lives, maxLives = STATE_CONFIG[1].lives;
+  let paddleX = W/2 - PADDLE_W/2;
+  let keyLeft = false, keyRight = false;
+  let ball, bricks, particles;
+
+  function resetBall(){
+    ball = {
+      x: paddleX + PADDLE_W/2,
+      y: H - 40 - BALL_R,
+      vx: 0, vy: 0,
+      speed: 5.2,
+      launched: false
+    };
+  }
+
+  function buildBricks(){
+    bricks = [];
+    for(let r=0; r<ROWS; r++){
+      for(let c=0; c<COLS; c++){
+        bricks.push({
+          x: BRICK_PAD + c*(BRICK_W + BRICK_PAD),
+          y: BRICK_TOP + r*(BRICK_H + BRICK_PAD),
+          w: BRICK_W, h: BRICK_H,
+          row: r,
+          color: PALETTE[r % PALETTE.length],
+          alive: true,
+          value: (ROWS - r) * 10
+        });
+      }
+    }
+  }
+
+
+  function initGame(stateNum){
+    if(stateNum === undefined) stateNum = currentStateNum;
+    currentStateNum = stateNum;
+    const cfg = STATE_CONFIG[stateNum];
+    score = 0;
+    lives = cfg.lives;
+    maxLives = cfg.lives;
+    ROWS = cfg.rows;
+    paddleX = W/2 - PADDLE_W/2;
+    buildBricks();
+    resetBall();
+    particles = [];
+    state = 'ready';
+    updateHUD();
+  }
+
+  function updateHUD(){
+    scoreEl.textContent = score;
+    livesEl.textContent = '●'.repeat(Math.max(0, lives)) + '○'.repeat(Math.max(0, maxLives - lives));
+  }
+
+  // ---------- particles ----------
+  function burst(x, y, color, n=8){
+    for(let i=0;i<n;i++){
+      const a = Math.random()*Math.PI*2;
+      const sp = 1.5 + Math.random()*2.5;
+      particles.push({
+        x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+        life: 28 + Math.random()*10, color, size: 2 + Math.random()*2,
+        gravity: 0.02
+      });
+    }
+  }
+
+  let confettiTimer = 0;
+  function spawnConfetti(){
+    particles.push({
+      x: Math.random()*W, y: -10,
+      vx: (Math.random()-0.5)*1.2, vy: 1 + Math.random()*1.5,
+      life: 220, color: PALETTE[Math.floor(Math.random()*PALETTE.length)],
+      size: 3 + Math.random()*3, gravity: 0.03, rot: Math.random()*Math.PI
+    });
+  }
+
+  function updateParticles(){
+    for(let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      p.vy += p.gravity;
+      p.x += p.vx; p.y += p.vy;
+      p.life--;
+      if(p.life<=0 || p.y > H+20) particles.splice(i,1);
+    }
+  }
+
+  function drawParticles(){
+    for(const p of particles){
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life/40));
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ---------- input ----------
+  function setPaddleFromClientX(clientX){
+    const rect = canvas.getBoundingClientRect();
+    const scale = W / rect.width;
+    let x = (clientX - rect.left) * scale - PADDLE_W/2;
+    x = Math.max(0, Math.min(W - PADDLE_W, x));
+    paddleX = x;
+  }
+
+  canvas.addEventListener('mousemove', e => setPaddleFromClientX(e.clientX));
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    setPaddleFromClientX(e.touches[0].clientX);
+  }, {passive:false});
+  canvas.addEventListener('touchstart', e => {
+    setPaddleFromClientX(e.touches[0].clientX);
+    launch();
+  }, {passive:false});
+  canvas.addEventListener('mousedown', launch);
+
+  window.addEventListener('keydown', e => {
+    if(document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    if(e.code === 'ArrowLeft') keyLeft = true;
+    if(e.code === 'ArrowRight') keyRight = true;
+    if(e.code === 'Space'){ e.preventDefault(); launch(); }
+  });
+  window.addEventListener('keyup', e => {
+    if(e.code === 'ArrowLeft') keyLeft = false;
+    if(e.code === 'ArrowRight') keyRight = false;
+  });
+
+  function launch(){
+    if(state === 'playing' && !ball.launched){
+      const angle = (-Math.PI/2) + (Math.random()*0.5 - 0.25);
+      ball.vx = Math.cos(angle) * ball.speed;
+      ball.vy = Math.sin(angle) * ball.speed;
+      ball.launched = true;
+    }
+  }
+
+  // ---------- overlays ----------
+  document.getElementById('startBtn').addEventListener('click', () => {
+    startOverlay.classList.add('hidden');
+    pwError.classList.add('hidden');
+    pwInput.value = '';
+    passwordOverlay.classList.remove('hidden');
+    pwInput.focus();
+  });
+
+  // ---------- 出席コード（隠れた数字）の変更 ----------
+  document.getElementById('codeBtn').addEventListener('click', () => {
+    startOverlay.classList.add('hidden');
+    codeError.classList.add('hidden');
+    codeInput.value = '';
+    codeOverlay.classList.remove('hidden');
+    codeInput.focus();
+    codeInput.select();
+  });
+
+  document.getElementById('codeBackBtn').addEventListener('click', () => {
+    codeOverlay.classList.add('hidden');
+    startOverlay.classList.remove('hidden');
+  });
+
+  async function trySaveCode(){
+    const val = codeInput.value.trim();
+    if(!/^[0-9]+$/.test(val)){
+      codeError.textContent = '数字を入力してください';
+      codeError.classList.remove('hidden');
+      return;
+    }
+    const r = await persistCode(val);
+    if(r === 'denied'){
+      codeError.textContent = '保存に失敗しました（共有サーバーに接続できないか、権限がありません）';
+      codeError.classList.remove('hidden');
+      return;
+    }
+    HIDDEN_TEXT = val;
+    codeOverlay.classList.add('hidden');
+    startOverlay.classList.remove('hidden');
+  }
+
+  document.getElementById('codeSaveBtn').addEventListener('click', trySaveCode);
+  codeInput.addEventListener('keydown', e => {
+    if(e.code === 'Enter') trySaveCode();
+  });
+
+  function beginState(stateNum){
+    passwordOverlay.classList.add('hidden');
+    initGame(stateNum);
+    state = 'playing';
+    startMusic();
+  }
+
+  document.getElementById('pwFreeBtn').addEventListener('click', () => {
+    beginState(1);
+  });
+
+  function trySubmitPassword(){
+    if(pwInput.value.trim() === PASSWORD){
+      beginState(2);
+    } else {
+      pwError.classList.remove('hidden');
+      pwInput.value = '';
+      pwInput.focus();
+    }
+  }
+
+  document.getElementById('pwSubmitBtn').addEventListener('click', trySubmitPassword);
+  pwInput.addEventListener('keydown', e => {
+    if(e.code === 'Enter') trySubmitPassword();
+  });
+
+  document.getElementById('retryBtn').addEventListener('click', () => {
+    initGame(currentStateNum);
+    state = 'playing';
+    loseOverlay.classList.add('hidden');
+  });
+  document.getElementById('playAgainBtn').addEventListener('click', () => {
+    initGame(currentStateNum);
+    state = 'playing';
+    winOverlay.classList.add('hidden');
+  });
+
+  // ---------- update ----------
+  function update(){
+    if(state !== 'playing') return;
+
+    if(keyLeft) paddleX -= 7.5;
+    if(keyRight) paddleX += 7.5;
+    paddleX = Math.max(0, Math.min(W - PADDLE_W, paddleX));
+
+    if(!ball.launched){
+      ball.x = paddleX + PADDLE_W/2;
+      ball.y = H - 40 - BALL_R;
+    } else {
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      if(ball.x - BALL_R < 0){ ball.x = BALL_R; ball.vx *= -1; beep(220,0.05); }
+      if(ball.x + BALL_R > W){ ball.x = W - BALL_R; ball.vx *= -1; beep(220,0.05); }
+      if(ball.y - BALL_R < 0){ ball.y = BALL_R; ball.vy *= -1; beep(220,0.05); }
+
+      // paddle collision
+      const py = H - 30;
+      if(ball.vy > 0 &&
+         ball.y + BALL_R >= py &&
+         ball.y + BALL_R <= py + PADDLE_H + 6 &&
+         ball.x >= paddleX - BALL_R &&
+         ball.x <= paddleX + PADDLE_W + BALL_R){
+        const hit = (ball.x - (paddleX + PADDLE_W/2)) / (PADDLE_W/2); // -1..1
+        const angle = hit * (Math.PI/3); // max 60deg
+        const sp = Math.min(ball.speed + 0.06, 9);
+        ball.speed = sp;
+        ball.vx = Math.sin(angle) * sp;
+        ball.vy = -Math.cos(angle) * sp;
+        ball.y = py - BALL_R;
+        beep(440,0.06,'triangle',0.06);
+      }
+
+      // brick collisions
+      const minG = minAliveGate();
+      for(const b of bricks){
+        if(!b.alive) continue;
+        if(ball.x + BALL_R > b.x && ball.x - BALL_R < b.x + b.w &&
+           ball.y + BALL_R > b.y && ball.y - BALL_R < b.y + b.h){
+          if(isLocked(b, minG)){
+            // ロック中のブロックは壊れず、ボールを跳ね返すだけ
+            const oX = Math.min(ball.x + BALL_R - b.x, b.x + b.w - (ball.x - BALL_R));
+            const oY = Math.min(ball.y + BALL_R - b.y, b.y + b.h - (ball.y - BALL_R));
+            if(oX < oY){
+              ball.x = ball.vx > 0 ? b.x - BALL_R : b.x + b.w + BALL_R;
+              ball.vx *= -1;
+            } else {
+              ball.y = ball.vy > 0 ? b.y - BALL_R : b.y + b.h + BALL_R;
+              ball.vy *= -1;
+            }
+            beep(160,0.05,'square',0.05);
+            break;
+          }
+          b.alive = false;
+          ball.vy *= -1;
+          score += b.value;
+          updateHUD();
+          burst(b.x + b.w/2, b.y + b.h/2, b.color);
+          beep(660,0.05,'square',0.05);
+          break;
+        }
+      }
+
+      // fell below paddle
+      if(ball.y - BALL_R > H){
+        lives--;
+        updateHUD();
+        if(lives <= 0){
+          state = 'lose';
+          loseOverlay.classList.remove('hidden');
+        } else {
+          ball.launched = false;
+          ball.speed = 5.2;
+        }
+      }
+
+      // win check
+      if(bricks.every(b => !b.alive)){
+        state = 'win';
+        winOverlay.classList.remove('hidden');
+      }
+    }
+  }
+
+  // ---------- draw ----------
+  function drawPaddle(){
+    const y = H - 30;
+    const grad = ctx.createLinearGradient(paddleX, 0, paddleX+PADDLE_W, 0);
+    grad.addColorStop(0, '#4cf3ff');
+    grad.addColorStop(1, '#b18cff');
+    ctx.fillStyle = grad;
+    ctx.shadowColor = '#4cf3ff';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.roundRect(paddleX, y, PADDLE_W, PADDLE_H, 6);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawBall(){
+    ctx.beginPath();
+    ctx.fillStyle = '#eaf6ff';
+    ctx.shadowColor = '#eaf6ff';
+    ctx.shadowBlur = 10;
+    ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawHiddenNumber(){
+    const areaX = BRICK_PAD;
+    const areaW = W - BRICK_PAD * 2;
+    const areaY = BRICK_TOP;
+    const areaH = ROWS * (BRICK_H + BRICK_PAD) - BRICK_PAD;
+    const destroyed = bricks.filter(b => !b.alive).length;
+    const progress = destroyed / bricks.length;
+
+    // 左右・上下の余白を最小限にして、はみ出さない範囲でできるだけ大きく表示する
+    const marginX = 12;
+    const marginY = Math.max(6, areaH * 0.07);
+    const maxWidth = areaW - marginX * 2;
+    const maxHeight = areaH - marginY * 2;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const shownText = displayedText();
+    let fontSize = maxHeight;
+    ctx.font = `${fontSize}px 'Press Start 2P', monospace`;
+    let textWidth = ctx.measureText(shownText).width;
+    if(textWidth > maxWidth){
+      fontSize = Math.floor(fontSize * (maxWidth / textWidth));
+      ctx.font = `${fontSize}px 'Press Start 2P', monospace`;
+    }
+
+    const finalW = ctx.measureText(shownText).width;
+    lastLayout = { left: areaX + areaW / 2 - finalW / 2, digitW: finalW / shownText.length, n: shownText.length };
+    const grad = ctx.createLinearGradient(areaX + marginX, 0, areaX + areaW - marginX, 0);
+    grad.addColorStop(0, '#4cf3ff');
+    grad.addColorStop(0.5, '#ffd23f');
+    grad.addColorStop(1, '#ff3ea5');
+    ctx.fillStyle = grad;
+    ctx.shadowColor = '#ffd23f';
+    ctx.shadowBlur = 4 + progress * 16;
+    ctx.fillText(shownText, areaX + areaW / 2, areaY + areaH / 2);
+    ctx.restore();
+  }
+
+  function drawBricks(){
+    const waveActive = (currentStateNum === 1);
+    const t = waveActive ? performance.now() / 1000 : 0;
+    const minG = minAliveGate();
+    for(const b of bricks){
+      if(!b.alive) continue;
+      if(waveActive){
+        // 行ごとに位相をずらしたHSL色相を時間で回すことで、上から下へ流れる波のように見せる
+        const hue = (b.row * 26 - t * 90) % 360;
+        const wave = (Math.sin(t * 2.2 - b.row * 0.55) + 1) / 2; // 0〜1で明暗にも波を付ける
+        const light = 46 + wave * 18;
+        ctx.fillStyle = `hsl(${(hue + 360) % 360}, 88%, ${light}%)`;
+      } else {
+        ctx.fillStyle = b.color;
+      }
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      if(isLocked(b, minG)){
+        ctx.fillStyle = 'rgba(6,10,19,0.72)';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeStyle = 'rgba(234,246,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(b.x + 5, b.y + b.h - 5);
+        ctx.lineTo(b.x + b.w - 5, b.y + 5);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(6,10,19,0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // subtle grid backdrop
+    ctx.strokeStyle = 'rgba(76,243,255,0.04)';
+    ctx.lineWidth = 1;
+    for(let x=0;x<W;x+=32){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for(let y=0;y<H;y+=32){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    drawHiddenNumber();
+    drawBricks();
+
+    if(state !== 'win'){
+      drawPaddle();
+      drawBall();
+    }
+
+    if(state === 'win'){
+      confettiTimer++;
+      if(confettiTimer % 4 === 0) spawnConfetti();
+    }
+
+    updateParticles();
+    drawParticles();
+  }
+
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  initGame();
+  loop();
+})();
+</script>
+</body>
+</html>
